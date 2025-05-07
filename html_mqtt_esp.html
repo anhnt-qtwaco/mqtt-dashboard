@@ -33,6 +33,7 @@
     client.on('connect', () => {
       console.log('✅ Connected to HiveMQ Cloud');
       client.subscribe('esp32/totalFlow');
+      client.subscribe('esp32/flowRate');
     });
 
     client.on('error', err => {
@@ -66,10 +67,12 @@
     // Nhận message từ ESP32 và cập nhật chart
     client.on('message', (topic, message) => {
       const totalFlow = parseFloat(message.toString());
+      const flowRate = parseFloat(message.toString());
       const now = new Date().toLocaleTimeString();
 
       chart.data.labels.push(now);
       chart.data.datasets[0].data.push(totalFlow);
+      chart.data.datasets[0].data.push(flowRate);
 
       // Giữ tối đa 20 điểm dữ liệu
       if (chart.data.labels.length > 20) {
