@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MQTT Realtime Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; }
+    canvas { max-width: 800px; margin: 30px auto; }
+  </style>
+</head>
+<body>
+  <h2>ESP32 Temperature Monitor (MQTT via HiveMQ Cloud)</h2>
+  <canvas id="tempChart" width="800" height="400"></canvas>
+
+  <script>
+    // Cấu hình HiveMQ Cloud
+    const options = {
+      clientId: 'webclient_' + Math.random().toString(16).substr(2, 8),
+      username: 'anhnt_qtwaco',
+      password: 'Abkd211@',
+      protocol: 'wss',
+      connectTimeout: 4000,
+    };
+
+    // Broker URL HiveMQ Cloud - dùng WebSocket Secure (WSS)
+    const broker = 'wss://57d9ce5ddbe14a1f8cf0edb45b254004.s1.eu.hivemq.cloud:8884/mqtt';
+
+    // Kết nối MQTT
+    const client = mqtt.connect(broker, options);
+
+    client.on('connect', () => {
+      console.log('✅ Connected to HiveMQ Cloud');
+      client.subscribe('esp32/totalFlow');
+    });
+
+    client.on('error', err => {
+      console.error('Connection error: ', err);
+    });
+
+    // Thiết lập biểu đồ
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'totalflow (Litres)',
+          data: [],
+          borderColor: 'rgb(255, 99, 132)',
+          fill: false,
+          tension: 0.2,
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: 'Time' }},
+          y: { title: { display: true, text: 'lit' }, beginAtZero: true }
+        }
+      }
+    });
+
+    // Nhận message từ ESP32 và cập nhật chart
+    client.on('message', (topic, message) => {
+      const totalFlow = parseFloat(message.toString());
+      const now = new Date().toLocaleTimeString();
+
+      chart.data.labels.push(now);
+      chart.data.datasets[0].data.push(totalFlow);
+
+      // Giữ tối đa 20 điểm dữ liệu
+      if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+
+      chart.update();
+    });
+  </script>
+</body>
+</html>
